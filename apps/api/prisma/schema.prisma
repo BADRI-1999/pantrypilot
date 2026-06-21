@@ -1,0 +1,216 @@
+// PantryPilot data model (SQLite for local dev).
+// Mirrors the PRD core entities: FoodEntity, Receipt, Inventory ledger,
+// Recipe, MealLog, ShoppingList. pgvector resolution is deferred; we use
+// normalized-string + LLM resolution for now.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// A user / household. Single-user for MVP but modelled as a household
+/// so shared pantries (FR-I6) can be added later without a migration churn.
+model Household {
+  id           String   @id @default(cuid())
+  name         String   @default("My Household")
+  size         Int      @default(1)
+  // Goal: maintain | protein | lose | gain | pantry
+  goal         String   @default("maintain")
+  // Dietary profile: veg | nonveg | egg | jain
+  diet         String   @default("veg")
+  allergies    String   @default("") // comma-separated
+  proteinTargetG Int    @default(60)
+  calorieTarget  Int    @default(2000)
+  createdAt    DateTime @default(now())
+
+  receipts        Receipt[]
+  inventoryItems  InventoryItem[]
+  ledgerEntries   LedgerEntry[]
+  mealLogs        MealLog[]
+  recipes         Recipe[]
+  shoppingItems   ShoppingListItem[]
+}
+
+/// Canonical food/product. Everything resolves into this layer.
+/// Nutrition is stored per 100 g/ml. (PRD §10)
+model FoodEntity {
+  id            String  @id @default(cuid())
+  name          String  @unique
+  category      String  @default("other") // grain | dairy | protein | vegetable | fruit | spice | packaged | other
+  baseUnit      String  @default("g")      // g | ml | pcs
+  // Nutrition per 100 base units
+  caloriesPer100 Float  @default(0)
+  proteinPer100  Float  @default(0)
+  carbsPer100    Float  @default(0)
+  fatPer100      Float  @default(0)
+  fibrePer100    Float  @default(0)
+  // Approx density for ml<->g conversions; 1.0 default
+  densityGPerMl  Float  @default(1.0)
+  // Default shelf life in days for expiry estimation (FR-I3)
+  shelfLifeDays  Int?
+  // Reorder threshold in base units for shopping list (FR-S1)
+  reorderThreshold Float @default(0)
+  barcode       String? @unique
+  aliases       String  @default("") // comma-separated normalized aliases learned from receipts
+
+  inventoryItems    InventoryItem[]
+  receiptLines      ReceiptLineItem[]
+  recipeIngredients RecipeIngredient[]
+  ledgerEntries     LedgerEntry[]
+  shoppingItems     ShoppingListItem[]
+
+  @@index([category])
+}
+
+/// A scanned receipt / imported invoice (an inflow source). PRD §10
+model Receipt {
+  id          String   @id @default(cuid())
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  imagePath   String?
+  merchant    String?
+  purchasedAt DateTime?
+  // pending | parsed | review | committed | failed
+  status      String   @default("pending")
+  rawText     String?  // raw OCR/model text
+  createdAt   DateTime @default(now())
+
+  lineItems   ReceiptLineItem[]
+
+  @@index([householdId])
+}
+
+/// One extracted line from a receipt, pending human review (FR-R4).
+model ReceiptLineItem {
+  id           String   @id @default(cuid())
+  receiptId    String
+  receipt      Receipt  @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  rawText      String   // e.g. "AMUL TST BTR 500G"
+  normalizedName String // e.g. "Amul Toast Butter"
+  quantity     Float    @default(1)
+  unit         String   @default("pcs")
+  price        Float?
+  // Resolved canonical entity (nullable until resolved/confirmed)
+  foodEntityId String?
+  foodEntity   FoodEntity? @relation(fields: [foodEntityId], references: [id])
+  confidence   Float    @default(0) // 0..1 (PRD: confidence is first-class)
+  // pending | confirmed | rejected
+  status       String   @default("pending")
+
+  @@index([receiptId])
+}
+
+/// Running pantry balance per food entity (FR-I1). One row per entity per household.
+model InventoryItem {
+  id           String   @id @default(cuid())
+  householdId  String
+  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  foodEntityId String
+  foodEntity   FoodEntity @relation(fields: [foodEntityId], references: [id])
+  quantity     Float    @default(0) // in foodEntity.baseUnit
+  unit         String   @default("g")
+  location     String   @default("pantry") // pantry | fridge | freezer
+  expiryDate   DateTime?
+  confidence   Float    @default(1)
+  updatedAt    DateTime @updatedAt
+
+  @@unique([householdId, foodEntityId])
+  @@index([householdId])
+}
+
+/// Append-only ledger of every inflow/outflow (FR-I2, audit trail). PRD §10
+model LedgerEntry {
+  id           String   @id @default(cuid())
+  householdId  String
+  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  foodEntityId String
+  foodEntity   FoodEntity @relation(fields: [foodEntityId], references: [id])
+  // inflow | outflow | reconcile
+  type         String
+  // delta in base units (+inflow / -outflow)
+  delta        Float
+  unit         String   @default("g")
+  // receipt | meal | manual | reconcile
+  source       String
+  sourceId     String?  // receiptId or mealLogId
+  // Idempotency key to prevent double-counting (PRD §11.2)
+  idempotencyKey String? @unique
+  note         String?
+  createdAt    DateTime @default(now())
+
+  @@index([householdId])
+  @@index([foodEntityId])
+}
+
+/// A recipe: ingredient list with quantities per serving (FR-M4). PRD §10
+model Recipe {
+  id          String   @id @default(cuid())
+  householdId String?
+  household   Household? @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  name        String
+  servings    Int      @default(1) // base serving count the ingredient amounts describe
+  // curated | user | llm
+  source      String   @default("curated")
+  createdAt   DateTime @default(now())
+
+  ingredients RecipeIngredient[]
+  mealLogs    MealLog[]
+
+  @@index([householdId])
+}
+
+model RecipeIngredient {
+  id           String   @id @default(cuid())
+  recipeId     String
+  recipe       Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  foodEntityId String
+  foodEntity   FoodEntity @relation(fields: [foodEntityId], references: [id])
+  quantity     Float    // per the recipe's base servings, in foodEntity.baseUnit
+  unit         String   @default("g")
+
+  @@index([recipeId])
+}
+
+/// A logged meal (an outflow). Confirm-before-deduct (FR-M1..M3). PRD §10
+model MealLog {
+  id           String   @id @default(cuid())
+  householdId  String
+  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  recipeId     String?
+  recipe       Recipe?  @relation(fields: [recipeId], references: [id])
+  name         String
+  servings     Float    @default(1)
+  eaters       Int      @default(1)
+  imagePath    String?
+  // Computed nutrition snapshot (totals for the whole meal)
+  calories     Float    @default(0)
+  protein      Float    @default(0)
+  carbs        Float    @default(0)
+  fat          Float    @default(0)
+  fibre        Float    @default(0)
+  loggedAt     DateTime @default(now())
+
+  @@index([householdId])
+}
+
+/// Auto-generated shopping list (FR-S1). PRD §10
+model ShoppingListItem {
+  id           String   @id @default(cuid())
+  householdId  String
+  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  foodEntityId String
+  foodEntity   FoodEntity @relation(fields: [foodEntityId], references: [id])
+  suggestedQty Float    @default(0)
+  unit         String   @default("g")
+  reason       String   @default("low") // low | out | expiring | manual
+  // suggested | accepted | dismissed | purchased
+  status       String   @default("suggested")
+  createdAt    DateTime @default(now())
+
+  @@unique([householdId, foodEntityId])
+  @@index([householdId])
+}
