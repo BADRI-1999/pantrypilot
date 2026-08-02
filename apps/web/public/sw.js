@@ -4,7 +4,7 @@
 //  - Navigations: network-first, fall back to cached shell when offline.
 //  - Static assets (icons, _next static): cache-first.
 //  - API calls (the backend): never cached here (always go to network).
-const CACHE = 'pantrypilot-v1';
+const CACHE = 'pantrypilot-v2';
 const SHELL = ['/', '/manifest.webmanifest', '/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
@@ -27,6 +27,12 @@ self.addEventListener('fetch', (event) => {
 
   // Don't intercept cross-origin API traffic — let it hit the network directly.
   if (url.origin !== self.location.origin) return;
+
+  // The API and uploads are now proxied same-origin (/api/*, /uploads/*), but
+  // they're live, mutable data — never treat them as cacheable static assets.
+  // Without this, this SW would cache-first them just like a JS chunk and
+  // serve stale data forever, ignoring every server Cache-Control header.
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/uploads/')) return;
 
   // App navigations: network-first with offline shell fallback.
   if (req.mode === 'navigate') {

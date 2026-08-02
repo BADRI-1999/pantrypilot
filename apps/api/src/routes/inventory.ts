@@ -87,3 +87,29 @@ inventoryRouter.post(
     res.json({ ok: true });
   }),
 );
+
+/** Remove an item from the pantry entirely (e.g. used it all up, or added by mistake). */
+inventoryRouter.delete(
+  '/:foodEntityId',
+  asyncHandler(async (req, res) => {
+    const household = await getDefaultHousehold();
+    const item = await prisma.inventoryItem.findUnique({
+      where: { householdId_foodEntityId: { householdId: household.id, foodEntityId: req.params.foodEntityId } },
+    });
+    if (!item) return res.status(404).json({ error: 'Item not found' });
+
+    if (item.quantity > 0) {
+      await applyLedger({
+        householdId: household.id,
+        foodEntityId: item.foodEntityId,
+        delta: -item.quantity,
+        unit: item.unit,
+        source: 'manual',
+        note: 'removed from pantry',
+      });
+    }
+    await prisma.inventoryItem.delete({ where: { id: item.id } });
+    await rebuildShoppingList(household.id);
+    res.json({ ok: true });
+  }),
+);
