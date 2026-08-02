@@ -1,0 +1,191 @@
+// PantryPilot data model (Postgres for public deployment).
+// Mirrors the PRD core entities: FoodEntity, Receipt, Inventory ledger,
+// Recipe, MealLog, ShoppingList. pgvector resolution is deferred; we use
+// normalized-string + LLM resolution for now.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// A user / household. Single-user for MVP but modelled as a household
+/// so shared pantries (FR-I6) can be added later without a migration churn.
+model Household {
+  id           String   @id @default(cuid())
+  name         String   @default("My Household")
+  size         Int      @default(1)
+  goal         String   @default("maintain")
+  diet         String   @default("veg")
+  allergies    String   @default("")
+  proteinTargetG Int    @default(60)
+  calorieTarget  Int    @default(2000)
+  createdAt    DateTime @default(now())
+
+  receipts        Receipt[]
+  inventoryItems  InventoryItem[]
+  ledgerEntries   LedgerEntry[]
+  mealLogs        MealLog[]
+  recipes         Recipe[]
+  shoppingItems   ShoppingListItem[]
+}
+
+model FoodEntity {
+  id            String  @id @default(cuid())
+  name          String  @unique
+  category      String  @default("other")
+  baseUnit      String  @default("g")
+  caloriesPer100 Float  @default(0)
+  proteinPer100  Float  @default(0)
+  carbsPer100    Float  @default(0)
+  fatPer100      Float  @default(0)
+  fibrePer100    Float  @default(0)
+  densityGPerMl  Float  @default(1.0)
+  shelfLifeDays  Int?
+  reorderThreshold Float @default(0)
+  barcode       String? @unique
+  aliases       String  @default("")
+
+  inventoryItems    InventoryItem[]
+  receiptLines      ReceiptLineItem[]
+  recipeIngredients RecipeIngredient[]
+  ledgerEntries     LedgerEntry[]
+  shoppingItems     ShoppingListItem[]
+
+  @@index([category])
+}
+
+model Receipt {
+  id          String   @id @default(cuid())
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  imagePath   String?
+  merchant    String?
+  purchasedAt DateTime?
+  status      String   @default("pending")
+  rawText     String?
+  createdAt   DateTime @default(now())
+
+  lineItems   ReceiptLineItem[]
+
+  @@index([householdId])
+}
+
+model ReceiptLineItem {
+  id           String   @id @default(cuid())
+  receiptId    String
+  receipt      Receipt  @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  rawText      String
+  normalizedName String
+  quantity     Float    @default(1)
+  unit         String   @default("pcs")
+  price        Float?
+  foodEntityId String?
+  foodEntity   FoodEntity? @relation(fields: [foodEntityId], references: [id])
+  confidence   Float    @default(0)
+  status       String   @default("pending")
+
+  @@index([receiptId])
+}
+
+model InventoryItem {
+  id           String   @id @default(cuid())
+  householdId  String
+  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  foodEntityId String
+  foodEntity   FoodEntity @relation(fields: [foodEntityId], references: [id])
+  quantity     Float    @default(0)
+  unit         String   @default("g")
+  location     String   @default("pantry")
+  expiryDate   DateTime?
+  confidence   Float    @default(1)
+  updatedAt    DateTime @updatedAt
+
+  @@unique([householdId, foodEntityId])
+  @@index([householdId])
+}
+
+model LedgerEntry {
+  id           String   @id @default(cuid())
+  householdId  String
+  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  foodEntityId String
+  foodEntity   FoodEntity @relation(fields: [foodEntityId], references: [id])
+  type         String
+  delta        Float
+  unit         String   @default("g")
+  source       String
+  sourceId     String?
+  idempotencyKey String? @unique
+  note         String?
+  createdAt    DateTime @default(now())
+
+  @@index([householdId])
+  @@index([foodEntityId])
+}
+
+model Recipe {
+  id          String   @id @default(cuid())
+  householdId String?
+  household   Household? @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  name        String
+  servings    Int      @default(1)
+  source      String   @default("curated")
+  createdAt   DateTime @default(now())
+
+  ingredients RecipeIngredient[]
+  mealLogs    MealLog[]
+
+  @@index([householdId])
+}
+
+model RecipeIngredient {
+  id           String   @id @default(cuid())
+  recipeId     String
+  recipe       Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  foodEntityId String
+  foodEntity   FoodEntity @relation(fields: [foodEntityId], references: [id])
+  quantity     Float
+  unit         String   @default("g")
+
+  @@index([recipeId])
+}
+
+model MealLog {
+  id           String   @id @default(cuid())
+  householdId  String
+  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  recipeId     String?
+  recipe       Recipe?  @relation(fields: [recipeId], references: [id])
+  name         String
+  servings     Float    @default(1)
+  eaters       Int      @default(1)
+  imagePath    String?
+  calories     Float    @default(0)
+  protein      Float    @default(0)
+  carbs        Float    @default(0)
+  fat          Float    @default(0)
+  fibre        Float    @default(0)
+  loggedAt     DateTime @default(now())
+
+  @@index([householdId])
+}
+
+model ShoppingListItem {
+  id           String   @id @default(cuid())
+  householdId  String
+  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  foodEntityId String
+  foodEntity   FoodEntity @relation(fields: [foodEntityId], references: [id])
+  suggestedQty Float    @default(0)
+  unit         String   @default("g")
+  reason       String   @default("low")
+  status       String   @default("suggested")
+  createdAt    DateTime @default(now())
+
+  @@unique([householdId, foodEntityId])
+  @@index([householdId])
+}

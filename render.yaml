@@ -8,9 +8,9 @@ services:
     buildCommand: |
       npm install
       npm run build --workspace apps/api
-      npm run db:generate --workspace apps/api
-      npm run db:migrate:prod --workspace apps/api
-      npm run db:seed:prod --workspace apps/api
+      npm run db:generate:prod --workspace apps/api
+      npm run db:push:prod --workspace apps/api
+    preDeployCommand: npm run db:seed:prod --workspace apps/api
     startCommand: npm run start --workspace apps/api
     healthCheckPath: /health
     autoDeploy: true
