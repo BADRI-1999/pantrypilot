@@ -2,20 +2,24 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma, getDefaultHousehold } from '../db.js';
 import { rebuildShoppingList } from '../services/shoppingList.js';
+import { asyncHandler } from '../asyncHandler.js';
 
 export const shoppingRouter = Router();
 
 /** Current shopping list (auto + manual), newest first. */
-shoppingRouter.get('/', async (_req, res) => {
-  const household = await getDefaultHousehold();
-  await rebuildShoppingList(household.id);
-  const items = await prisma.shoppingListItem.findMany({
-    where: { householdId: household.id, status: { not: 'purchased' } },
-    include: { foodEntity: true },
-    orderBy: [{ reason: 'asc' }, { createdAt: 'desc' }],
-  });
-  res.json(items);
-});
+shoppingRouter.get(
+  '/',
+  asyncHandler(async (_req, res) => {
+    const household = await getDefaultHousehold();
+    await rebuildShoppingList(household.id);
+    const items = await prisma.shoppingListItem.findMany({
+      where: { householdId: household.id, status: { not: 'purchased' } },
+      include: { foodEntity: true },
+      orderBy: [{ reason: 'asc' }, { createdAt: 'desc' }],
+    });
+    res.json(items);
+  }),
+);
 
 const addSchema = z.object({
   foodEntityId: z.string(),
@@ -24,8 +28,9 @@ const addSchema = z.object({
 });
 
 /** Manually add a staple to the list (FR-S3). */
-shoppingRouter.post('/', async (req, res, next) => {
-  try {
+shoppingRouter.post(
+  '/',
+  asyncHandler(async (req, res) => {
     const household = await getDefaultHousehold();
     const body = addSchema.parse(req.body);
     const item = await prisma.shoppingListItem.upsert({
@@ -35,14 +40,13 @@ shoppingRouter.post('/', async (req, res, next) => {
       include: { foodEntity: true },
     });
     res.status(201).json(item);
-  } catch (err) {
-    next(err);
-  }
-});
+  }),
+);
 
 /** Update status: accepted | dismissed | purchased. */
-shoppingRouter.patch('/:id', async (req, res, next) => {
-  try {
+shoppingRouter.patch(
+  '/:id',
+  asyncHandler(async (req, res) => {
     const { status } = req.body as { status?: string };
     const item = await prisma.shoppingListItem.update({
       where: { id: req.params.id },
@@ -50,16 +54,13 @@ shoppingRouter.patch('/:id', async (req, res, next) => {
       include: { foodEntity: true },
     });
     res.json(item);
-  } catch (err) {
-    next(err);
-  }
-});
+  }),
+);
 
-shoppingRouter.delete('/:id', async (req, res, next) => {
-  try {
+shoppingRouter.delete(
+  '/:id',
+  asyncHandler(async (req, res) => {
     await prisma.shoppingListItem.delete({ where: { id: req.params.id } });
     res.json({ ok: true });
-  } catch (err) {
-    next(err);
-  }
-});
+  }),
+);
