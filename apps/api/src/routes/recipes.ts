@@ -1,48 +1,55 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma, getDefaultHousehold } from '../db.js';
+import { asyncHandler } from '../asyncHandler.js';
 
 export const recipesRouter = Router();
 
 /** List recipes with ingredients. */
-recipesRouter.get('/', async (_req, res) => {
-  const household = await getDefaultHousehold();
-  const recipes = await prisma.recipe.findMany({
-    where: { OR: [{ householdId: household.id }, { householdId: null }] },
-    include: { ingredients: { include: { foodEntity: true } } },
-    orderBy: { name: 'asc' },
-  });
-  res.json(recipes);
-});
+recipesRouter.get(
+  '/',
+  asyncHandler(async (_req, res) => {
+    const household = await getDefaultHousehold();
+    const recipes = await prisma.recipe.findMany({
+      where: { OR: [{ householdId: household.id }, { householdId: null }] },
+      include: { ingredients: { include: { foodEntity: true } } },
+      orderBy: { name: 'asc' },
+    });
+    res.json(recipes);
+  }),
+);
 
 /**
  * "Cook with what I have" (FR-C1): rank recipes by how fully the current pantry
  * covers their ingredients (per the recipe's base servings).
  */
-recipesRouter.get('/cookable', async (_req, res) => {
-  const household = await getDefaultHousehold();
-  const [recipes, inventory] = await Promise.all([
-    prisma.recipe.findMany({
-      where: { OR: [{ householdId: household.id }, { householdId: null }] },
-      include: { ingredients: { include: { foodEntity: true } } },
-    }),
-    prisma.inventoryItem.findMany({ where: { householdId: household.id } }),
-  ]);
-  const stock = new Map(inventory.map((i) => [i.foodEntityId, i.quantity]));
+recipesRouter.get(
+  '/cookable',
+  asyncHandler(async (_req, res) => {
+    const household = await getDefaultHousehold();
+    const [recipes, inventory] = await Promise.all([
+      prisma.recipe.findMany({
+        where: { OR: [{ householdId: household.id }, { householdId: null }] },
+        include: { ingredients: { include: { foodEntity: true } } },
+      }),
+      prisma.inventoryItem.findMany({ where: { householdId: household.id } }),
+    ]);
+    const stock = new Map(inventory.map((i) => [i.foodEntityId, i.quantity]));
 
-  const ranked = recipes
-    .map((r) => {
-      const total = r.ingredients.length || 1;
-      const have = r.ingredients.filter((ing) => (stock.get(ing.foodEntityId) ?? 0) >= ing.quantity).length;
-      const missing = r.ingredients
-        .filter((ing) => (stock.get(ing.foodEntityId) ?? 0) < ing.quantity)
-        .map((ing) => ing.foodEntity.name);
-      return { recipe: r, coverage: have / total, have, total, missing };
-    })
-    .sort((a, b) => b.coverage - a.coverage);
+    const ranked = recipes
+      .map((r) => {
+        const total = r.ingredients.length || 1;
+        const have = r.ingredients.filter((ing) => (stock.get(ing.foodEntityId) ?? 0) >= ing.quantity).length;
+        const missing = r.ingredients
+          .filter((ing) => (stock.get(ing.foodEntityId) ?? 0) < ing.quantity)
+          .map((ing) => ing.foodEntity.name);
+        return { recipe: r, coverage: have / total, have, total, missing };
+      })
+      .sort((a, b) => b.coverage - a.coverage);
 
-  res.json(ranked);
-});
+    res.json(ranked);
+  }),
+);
 
 const ingredientSchema = z.object({
   foodEntityId: z.string(),
@@ -57,8 +64,9 @@ const createSchema = z.object({
   ingredients: z.array(ingredientSchema).min(1),
 });
 
-recipesRouter.post('/', async (req, res, next) => {
-  try {
+recipesRouter.post(
+  '/',
+  asyncHandler(async (req, res) => {
     const household = await getDefaultHousehold();
     const body = createSchema.parse(req.body);
     const recipe = await prisma.recipe.create({
@@ -72,16 +80,13 @@ recipesRouter.post('/', async (req, res, next) => {
       include: { ingredients: { include: { foodEntity: true } } },
     });
     res.status(201).json(recipe);
-  } catch (err) {
-    next(err);
-  }
-});
+  }),
+);
 
-recipesRouter.delete('/:id', async (req, res, next) => {
-  try {
+recipesRouter.delete(
+  '/:id',
+  asyncHandler(async (req, res) => {
     await prisma.recipe.delete({ where: { id: req.params.id } });
     res.json({ ok: true });
-  } catch (err) {
-    next(err);
-  }
-});
+  }),
+);

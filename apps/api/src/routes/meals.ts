@@ -8,27 +8,33 @@ import { resolveItem } from '../agents/itemResolver.js';
 import { applyLedger } from '../services/inventory.js';
 import { rebuildShoppingList } from '../services/shoppingList.js';
 import { round } from '../utils.js';
+import { asyncHandler } from '../asyncHandler.js';
 
 export const mealsRouter = Router();
 
 /** List logged meals. */
-mealsRouter.get('/', async (_req, res) => {
-  const household = await getDefaultHousehold();
-  const meals = await prisma.mealLog.findMany({
-    where: { householdId: household.id },
-    include: { recipe: true },
-    orderBy: { loggedAt: 'desc' },
-    take: 100,
-  });
-  res.json(meals);
-});
+mealsRouter.get(
+  '/',
+  asyncHandler(async (_req, res) => {
+    const household = await getDefaultHousehold();
+    const meals = await prisma.mealLog.findMany({
+      where: { householdId: household.id },
+      include: { recipe: true },
+      orderBy: { loggedAt: 'desc' },
+      take: 100,
+    });
+    res.json(meals);
+  }),
+);
 
 /**
  * Assistive dish recognition from a photo (FR-M2). Returns a dish + servings +
  * decomposed ingredients with confidence. Deducts NOTHING — confirm-before-deduct.
  */
-mealsRouter.post('/suggest', upload.single('image'), async (req, res, next) => {
-  try {
+mealsRouter.post(
+  '/suggest',
+  upload.single('image'),
+  asyncHandler(async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
     const suggestion = await recognizeDish(req.file.path);
     if (!suggestion) {
@@ -51,10 +57,8 @@ mealsRouter.post('/suggest', upload.single('image'), async (req, res, next) => {
       }),
     );
     res.json({ imagePath: req.file.filename, suggestion: { ...suggestion, ingredients: resolved } });
-  } catch (err) {
-    next(err);
-  }
-});
+  }),
+);
 
 const manualIngredient = z.object({
   foodEntityId: z.string(),
@@ -79,8 +83,9 @@ const logSchema = z
  * and deducts each ingredient from inventory as an outflow (confirm-before-deduct
  * already happened in the UI). Idempotent per meal+ingredient.
  */
-mealsRouter.post('/', async (req, res, next) => {
-  try {
+mealsRouter.post(
+  '/',
+  asyncHandler(async (req, res) => {
     const household = await getDefaultHousehold();
     const body = logSchema.parse(req.body);
 
@@ -139,16 +144,13 @@ mealsRouter.post('/', async (req, res, next) => {
 
     await rebuildShoppingList(household.id);
     res.status(201).json({ meal, nutrition });
-  } catch (err) {
-    next(err);
-  }
-});
+  }),
+);
 
-mealsRouter.delete('/:id', async (req, res, next) => {
-  try {
+mealsRouter.delete(
+  '/:id',
+  asyncHandler(async (req, res) => {
     await prisma.mealLog.delete({ where: { id: req.params.id } });
     res.json({ ok: true });
-  } catch (err) {
-    next(err);
-  }
-});
+  }),
+);

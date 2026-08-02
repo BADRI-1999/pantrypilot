@@ -2,14 +2,18 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma, getDefaultHousehold } from '../db.js';
 import { buildInsights } from '../agents/nutrition.js';
+import { asyncHandler } from '../asyncHandler.js';
 
 export const householdRouter = Router();
 
 /** Get the household profile (goals, diet, targets). */
-householdRouter.get('/', async (_req, res) => {
-  const household = await getDefaultHousehold();
-  res.json(household);
-});
+householdRouter.get(
+  '/',
+  asyncHandler(async (_req, res) => {
+    const household = await getDefaultHousehold();
+    res.json(household);
+  }),
+);
 
 const updateSchema = z.object({
   name: z.string().optional(),
@@ -21,22 +25,23 @@ const updateSchema = z.object({
   calorieTarget: z.number().int().positive().optional(),
 });
 
-householdRouter.patch('/', async (req, res, next) => {
-  try {
+householdRouter.patch(
+  '/',
+  asyncHandler(async (req, res) => {
     const household = await getDefaultHousehold();
     const body = updateSchema.parse(req.body);
     const updated = await prisma.household.update({ where: { id: household.id }, data: body });
     res.json(updated);
-  } catch (err) {
-    next(err);
-  }
-});
+  }),
+);
 
 /**
  * Nutrition dashboard (FR-N1/N4): today's totals, 7-day trend, and insights
  * framed as wellness guidance (not medical advice).
  */
-householdRouter.get('/nutrition', async (_req, res) => {
+householdRouter.get(
+  '/nutrition',
+  asyncHandler(async (_req, res) => {
   const household = await getDefaultHousehold();
 
   const startOfToday = new Date();
@@ -92,4 +97,5 @@ householdRouter.get('/nutrition', async (_req, res) => {
     insights,
     mealsThisWeek: weekMeals.length,
   });
-});
+  }),
+);

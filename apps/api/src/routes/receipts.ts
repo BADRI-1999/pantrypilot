@@ -6,35 +6,44 @@ import { resolveItem } from '../agents/itemResolver.js';
 import { toBaseUnit } from '../utils.js';
 import { applyLedger } from '../services/inventory.js';
 import { rebuildShoppingList } from '../services/shoppingList.js';
+import { asyncHandler } from '../asyncHandler.js';
 
 export const receiptsRouter = Router();
 
 /** List receipts with their line items. */
-receiptsRouter.get('/', async (_req, res) => {
-  const household = await getDefaultHousehold();
-  const receipts = await prisma.receipt.findMany({
-    where: { householdId: household.id },
-    orderBy: { createdAt: 'desc' },
-    include: { lineItems: { include: { foodEntity: true } } },
-  });
-  res.json(receipts);
-});
+receiptsRouter.get(
+  '/',
+  asyncHandler(async (_req, res) => {
+    const household = await getDefaultHousehold();
+    const receipts = await prisma.receipt.findMany({
+      where: { householdId: household.id },
+      orderBy: { createdAt: 'desc' },
+      include: { lineItems: { include: { foodEntity: true } } },
+    });
+    res.json(receipts);
+  }),
+);
 
-receiptsRouter.get('/:id', async (req, res) => {
-  const receipt = await prisma.receipt.findUnique({
-    where: { id: req.params.id },
-    include: { lineItems: { include: { foodEntity: true } } },
-  });
-  if (!receipt) return res.status(404).json({ error: 'Receipt not found' });
-  res.json(receipt);
-});
+receiptsRouter.get(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const receipt = await prisma.receipt.findUnique({
+      where: { id: req.params.id },
+      include: { lineItems: { include: { foodEntity: true } } },
+    });
+    if (!receipt) return res.status(404).json({ error: 'Receipt not found' });
+    res.json(receipt);
+  }),
+);
 
 /**
  * Upload a receipt image, parse it (Receipt Parser agent), resolve each line to
  * a FoodEntity (Item Resolver agent), and stage line items for review (FR-R4).
  */
-receiptsRouter.post('/upload', upload.single('image'), async (req, res, next) => {
-  try {
+receiptsRouter.post(
+  '/upload',
+  upload.single('image'),
+  asyncHandler(async (req, res) => {
     const household = await getDefaultHousehold();
     if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
 
@@ -56,14 +65,13 @@ receiptsRouter.post('/upload', upload.single('image'), async (req, res, next) =>
       include: { lineItems: { include: { foodEntity: true } } },
     });
     res.status(201).json(full);
-  } catch (err) {
-    next(err);
-  }
-});
+  }),
+);
 
 /** Import a receipt from pasted text (e.g. emailed invoice). */
-receiptsRouter.post('/import-text', async (req, res, next) => {
-  try {
+receiptsRouter.post(
+  '/import-text',
+  asyncHandler(async (req, res) => {
     const household = await getDefaultHousehold();
     const { text } = req.body as { text?: string };
     if (!text) return res.status(400).json({ error: 'text is required' });
@@ -80,14 +88,13 @@ receiptsRouter.post('/import-text', async (req, res, next) => {
       include: { lineItems: { include: { foodEntity: true } } },
     });
     res.status(201).json(full);
-  } catch (err) {
-    next(err);
-  }
-});
+  }),
+);
 
 /** Update a single line item during review (fix name/qty/unit/entity/status). */
-receiptsRouter.patch('/line/:lineId', async (req, res, next) => {
-  try {
+receiptsRouter.patch(
+  '/line/:lineId',
+  asyncHandler(async (req, res) => {
     const { normalizedName, quantity, unit, foodEntityId, status } = req.body;
     const updated = await prisma.receiptLineItem.update({
       where: { id: req.params.lineId },
@@ -95,17 +102,16 @@ receiptsRouter.patch('/line/:lineId', async (req, res, next) => {
       include: { foodEntity: true },
     });
     res.json(updated);
-  } catch (err) {
-    next(err);
-  }
-});
+  }),
+);
 
 /**
  * Commit a reviewed receipt: each confirmed line becomes an inflow on the ledger
  * (FR-I2). Idempotency keyed per line so re-commit never double-counts.
  */
-receiptsRouter.post('/:id/commit', async (req, res, next) => {
-  try {
+receiptsRouter.post(
+  '/:id/commit',
+  asyncHandler(async (req, res) => {
     const household = await getDefaultHousehold();
     const receipt = await prisma.receipt.findUnique({
       where: { id: req.params.id },
@@ -139,10 +145,8 @@ receiptsRouter.post('/:id/commit', async (req, res, next) => {
     await prisma.receipt.update({ where: { id: receipt.id }, data: { status: 'committed' } });
     await rebuildShoppingList(household.id);
     res.json({ ok: true });
-  } catch (err) {
-    next(err);
-  }
-});
+  }),
+);
 
 async function stageParsedLines(
   receiptId: string,

@@ -1,4 +1,4 @@
-// PantryPilot data model (SQLite for local dev).
+// PantryPilot data model (Postgres).
 // Mirrors the PRD core entities: FoodEntity, Receipt, Inventory ledger,
 // Recipe, MealLog, ShoppingList. pgvector resolution is deferred; we use
 // normalized-string + LLM resolution for now.
@@ -8,7 +8,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
