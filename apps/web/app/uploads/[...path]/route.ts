@@ -26,7 +26,14 @@ async function proxyToUpload(request: NextRequest) {
   });
 
   const responseHeaders = new Headers(upstreamResponse.headers);
+  // Hop-by-hop headers describe the upstream connection's framing, not this
+  // one — forwarding them causes the browser to misparse the response body
+  // (e.g. a stale Transfer-Encoding: chunked against Next's own stream).
   responseHeaders.delete('content-length');
+  responseHeaders.delete('content-encoding');
+  responseHeaders.delete('transfer-encoding');
+  responseHeaders.delete('connection');
+  responseHeaders.delete('keep-alive');
 
   return new NextResponse(upstreamResponse.body, {
     status: upstreamResponse.status,
