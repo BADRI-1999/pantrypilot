@@ -2,11 +2,19 @@ function resolveApiUrl(): string {
   // Explicit override always wins — set NEXT_PUBLIC_API_URL when you deploy
   // the API to a real host (e.g. https://api.yourdomain.com).
   if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+
+  // Production fallback for the public Vercel deployment.
+  const hostedApiUrl = 'https://pantrypilot-1e2w.onrender.com';
+
   // In the browser, call the API on the SAME host that served this page, port 4000.
   // This makes it work from localhost AND from a phone on the same Wi-Fi
   // (e.g. http://192.168.1.4:3000 → http://192.168.1.4:4000) with zero config.
   if (typeof window !== 'undefined') {
-    return `${window.location.protocol}//${window.location.hostname}:4000`;
+    const host = window.location.hostname;
+    if (host !== 'localhost' && host !== '127.0.0.1') {
+      return hostedApiUrl;
+    }
+    return `${window.location.protocol}//${host}:4000`;
   }
   return 'http://localhost:4000';
 }
