@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// This proxies live, per-request state (inventory, receipts, etc.) — never
+// let Next.js/Vercel treat it as a static or edge-cacheable route.
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const API_PROXY_TARGET = (
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.API_PROXY_TARGET ||
@@ -39,6 +44,10 @@ async function proxyToApi(request: NextRequest) {
   responseHeaders.delete('transfer-encoding');
   responseHeaders.delete('connection');
   responseHeaders.delete('keep-alive');
+  // Force no caching on the way back too — the upstream API may not always
+  // send an explicit Cache-Control, and Vercel's edge will cache GETs by
+  // default in that case, serving stale data to some callers.
+  responseHeaders.set('cache-control', 'no-store, must-revalidate');
 
   return new NextResponse(upstreamResponse.body, {
     status: upstreamResponse.status,
