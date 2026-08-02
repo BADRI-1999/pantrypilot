@@ -87,6 +87,13 @@ const RECIPES: SeedRecipe[] = [
 ];
 
 async function main() {
+  const databaseUrl = process.env.DATABASE_URL ?? '';
+  const isProductionPostgres = process.env.NODE_ENV === 'production' && databaseUrl.startsWith('postgres');
+
+  if (process.env.NODE_ENV === 'production' && !isProductionPostgres) {
+    console.log('Skipping seed in production because DATABASE_URL is not a Postgres connection string.');
+    return;
+  }
   // Household
   const household = (await prisma.household.findFirst()) ??
     (await prisma.household.create({

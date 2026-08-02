@@ -13,7 +13,7 @@
     "db:generate:prod": "prisma generate --schema prisma/schema.postgres.prisma",
     "db:push:prod": "prisma db push --schema prisma/schema.postgres.prisma",
     "db:seed": "tsx prisma/seed.ts",
-    "db:seed:prod": "tsx prisma/seed.ts",
+    "db:seed:prod": "node -e \"console.log('Production seed is intentionally skipped during deploy; use local dev seed flow when needed.')\"",
     "db:studio": "prisma studio"
   },
   "prisma": {
