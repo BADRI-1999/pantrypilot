@@ -11,6 +11,11 @@ async function proxyToApi(request: NextRequest) {
   const headers = new Headers(request.headers);
   headers.delete('host');
   headers.delete('content-length');
+  // This is a trusted server-to-server call, not a browser cross-origin
+  // request — forwarding the browser's Origin/Referer makes the upstream's
+  // CORS middleware wrongly evaluate it as one and reject it.
+  headers.delete('origin');
+  headers.delete('referer');
 
   let body: BodyInit | undefined;
   if (!['GET', 'HEAD'].includes(request.method)) {
