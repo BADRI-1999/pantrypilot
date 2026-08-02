@@ -3,16 +3,13 @@ function resolveApiUrl(): string {
   // the API to a real host (e.g. https://api.yourdomain.com).
   if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
 
-  // Production fallback for the public Vercel deployment.
-  const hostedApiUrl = 'https://pantrypilot-1e2w.onrender.com';
-
-  // In the browser, call the API on the SAME host that served this page, port 4000.
-  // This makes it work from localhost AND from a phone on the same Wi-Fi
-  // (e.g. http://192.168.1.4:3000 → http://192.168.1.4:4000) with zero config.
+  // In the browser, call the API on the SAME host that served this page for
+  // production deployments. The app proxy routes in /app/api and /app/uploads
+  // forward that request to the hosted Render backend.
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
     if (host !== 'localhost' && host !== '127.0.0.1') {
-      return hostedApiUrl;
+      return '';
     }
     return `${window.location.protocol}//${host}:4000`;
   }
