@@ -39,6 +39,15 @@ app.use(express.json({ limit: '5mb' }));
 // Serve uploaded receipt/meal images.
 app.use('/uploads', express.static(uploadsDir));
 
+app.get('/', (_req, res) => {
+  res.json({
+    ok: true,
+    service: 'pantrypilot-api',
+    message: 'PantryPilot API is running.',
+    routes: ['/health', '/api/*'],
+  });
+});
+
 app.get('/health', (_req, res) => {
   res.json({ ok: true, openai: env.hasOpenAI, service: 'pantrypilot-api' });
 });
