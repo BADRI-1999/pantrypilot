@@ -33,6 +33,12 @@ export default function PantryPage() {
     load();
   }
 
+  async function remove(item: InventoryItem) {
+    if (!confirm(`Remove ${item.foodEntity.name} from your pantry?`)) return;
+    await api(`/api/inventory/${item.foodEntity.id}`, { method: 'DELETE' });
+    load();
+  }
+
   if (error) return <ErrorBox message={error} />;
 
   return (
@@ -83,15 +89,20 @@ export default function PantryPage() {
                   <td className="muted">{i.expiryDate ? new Date(i.expiryDate).toLocaleDateString() : '—'}</td>
                   <td style={{ textAlign: 'right' }}>
                     {editing !== i.id && (
-                      <button
-                        className="sm ghost"
-                        onClick={() => {
-                          setEditing(i.id);
-                          setEditQty(String(Math.round(i.quantity)));
-                        }}
-                      >
-                        Pantry check
-                      </button>
+                      <div className="row" style={{ gap: 6, justifyContent: 'flex-end' }}>
+                        <button
+                          className="sm ghost"
+                          onClick={() => {
+                            setEditing(i.id);
+                            setEditQty(String(Math.round(i.quantity)));
+                          }}
+                        >
+                          Pantry check
+                        </button>
+                        <button className="sm ghost" onClick={() => remove(i)}>
+                          Remove
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
