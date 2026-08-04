@@ -1,4 +1,4 @@
-# PantryPilot
+# PantryIQ
 
 A pantry-aware nutrition app that turns grocery **receipts into a live inventory**,
 watches it deplete as you cook, **rebuilds your shopping list** automatically, and
@@ -74,7 +74,7 @@ The web app is a **Progressive Web App** — installable on PC and mobile, no ap
 store needed. It runs in its own window and the UI shell works offline.
 
 **On PC (Chrome / Edge):** open the site, then click the **install icon** in the
-address bar (or menu → "Install PantryPilot"). It opens as a standalone app.
+address bar (or menu → "Install PantryIQ"). It opens as a standalone app.
 
 **On Android (Chrome):** open the site → menu (⋮) → **Add to Home screen / Install app**.
 
@@ -121,4 +121,4 @@ Deploy the two apps and point the web app at the hosted API:
 - PWA assets: `app/manifest.ts`, `public/sw.js`, icons in `public/icons/`
   (regenerate with `node apps/web/scripts/generate-icons.mjs`).
 
-See `PantryPilot PRD v0_1.md` for the full product spec.
+See `PantryIQ PRD v0_1.md` for the full product spec.

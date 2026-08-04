@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 echo ============================================
-echo   PantryPilot launcher
+echo   PantryIQ launcher
 echo ============================================
 echo.
 echo Building (first run / after code changes)...
@@ -21,16 +21,16 @@ for /f "delims=" %%i in ('powershell -NoProfile -Command "(Get-NetIPConfiguratio
 
 echo.
 echo Starting servers in two new windows...
-start "PantryPilot API" /d "%~dp0" cmd /k "node apps\api\dist\index.js"
-start "PantryPilot Web" /d "%~dp0apps\web" cmd /k "npx next start -p 3000 -H 0.0.0.0"
+start "PantryIQ API" /d "%~dp0" cmd /k "node apps\api\dist\index.js"
+start "PantryIQ Web" /d "%~dp0apps\web" cmd /k "npx next start -p 3000 -H 0.0.0.0"
 
 echo.
-echo PantryPilot is running.
+echo PantryIQ is running.
 echo   On this PC:                 http://localhost:3000
 if defined LANIP echo   On your phone (same Wi-Fi):  http://%LANIP%:3000
 echo.
-echo To stop PantryPilot, close the two "PantryPilot API" and
-echo "PantryPilot Web" windows that just opened.
+echo To stop PantryIQ, close the two "PantryIQ API" and
+echo "PantryIQ Web" windows that just opened.
 echo.
 pause
 endlocal

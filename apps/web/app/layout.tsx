@@ -6,14 +6,14 @@ import PWARegister from '@/components/PWARegister';
 import InstallPrompt from '@/components/InstallPrompt';
 
 export const metadata: Metadata = {
-  title: 'PantryPilot',
+  title: 'PantryIQ',
   description: 'Pantry-aware nutrition: receipts → inventory → meals → shopping list.',
-  applicationName: 'PantryPilot',
+  applicationName: 'PantryIQ',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'PantryPilot',
+    title: 'PantryIQ',
   },
   icons: {
     icon: [

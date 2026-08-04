@@ -42,14 +42,14 @@ app.use('/uploads', express.static(uploadsDir));
 app.get('/', (_req, res) => {
   res.json({
     ok: true,
-    service: 'pantrypilot-api',
-    message: 'PantryPilot API is running.',
+    service: 'pantryiq-api',
+    message: 'PantryIQ API is running.',
     routes: ['/health', '/api/*'],
   });
 });
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, openai: env.hasOpenAI, service: 'pantrypilot-api' });
+  res.json({ ok: true, openai: env.hasOpenAI, service: 'pantryiq-api' });
 });
 
 app.use('/api/receipts', receiptsRouter);
@@ -68,7 +68,7 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
 });
 
 app.listen(env.port, () => {
-  console.log(`PantryPilot API listening on http://localhost:${env.port}`);
+  console.log(`PantryIQ API listening on http://localhost:${env.port}`);
   for (const ip of lanIPs()) {
     console.log(`  on your network:           http://${ip}:${env.port}`);
   }
