@@ -1,4 +1,4 @@
-# Product Requirements Document — PantryPilot *(working name)*
+# Product Requirements Document — PantryIQ
 
 | | |
 |---|---|
@@ -20,7 +20,7 @@ A pantry-aware nutrition app that turns grocery **receipts into a live inventory
 
 People already track *one* of three things — what they buy, what they cook, or what nutrition they get — but never the loop between them. Manual nutrition apps fail because logging every meal by hand is tedious and gets abandoned in two weeks. Pantry/grocery apps fail because keeping inventory accurate by hand is even worse. Nobody connects "I bought 1 kg of paneer" to "I ate 150 g of it tonight" to "I'm now low and should rebuy" to "my protein this week is fine but fibre is low."
 
-PantryPilot closes that loop by inferring most of the data from artifacts users already produce: the bill they get at checkout and the photo they'd take of their food anyway.
+PantryIQ closes that loop by inferring most of the data from artifacts users already produce: the bill they get at checkout and the photo they'd take of their food anyway.
 
 **Why now:** multimodal models are finally good enough to read messy receipts and recognise dishes, and quick-commerce (Blinkit, Zepto, Instamart, BigBasket) makes an auto-generated shopping list immediately actionable.
 

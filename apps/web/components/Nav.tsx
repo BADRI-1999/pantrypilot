@@ -18,7 +18,7 @@ export default function Nav() {
   return (
     <aside className="sidebar">
       <div className="brand">
-        🧭 PantryPilot
+        🧠 PantryIQ
         <small>receipts → pantry → meals</small>
       </div>
       <nav className="nav">

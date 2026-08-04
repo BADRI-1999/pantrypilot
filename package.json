@@ -1,8 +1,8 @@
 {
-  "name": "pantrypilot",
+  "name": "pantryiq",
   "version": "0.1.0",
   "private": true,
-  "description": "PantryPilot — pantry-aware nutrition app (receipts → inventory → meals → shopping list).",
+  "description": "PantryIQ — pantry-aware nutrition app (receipts → inventory → meals → shopping list).",
   "workspaces": [
     "apps/*"
   ],

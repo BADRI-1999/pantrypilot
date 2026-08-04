@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'PantryPilot',
-    short_name: 'PantryPilot',
+    name: 'PantryIQ',
+    short_name: 'PantryIQ',
     description: 'Pantry-aware nutrition: receipts → inventory → meals → shopping list.',
     start_url: '/',
     display: 'standalone',

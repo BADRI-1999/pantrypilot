@@ -64,10 +64,10 @@ export default function InstallPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="install-banner" role="dialog" aria-label="Install PantryPilot">
-      <div className="install-icon">🧭</div>
+    <div className="install-banner" role="dialog" aria-label="Install PantryIQ">
+      <div className="install-icon">🧠</div>
       <div className="install-text">
-        <strong>Install PantryPilot</strong>
+        <strong>Install PantryIQ</strong>
         {iosHint ? (
           <span>
             Tap the Share button, then <em>“Add to Home Screen”</em>.

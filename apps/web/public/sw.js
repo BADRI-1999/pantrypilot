@@ -1,10 +1,10 @@
-// Minimal service worker for PantryPilot.
+// Minimal service worker for PantryIQ.
 // Strategy:
 //  - Precache the app shell so the UI opens offline.
 //  - Navigations: network-first, fall back to cached shell when offline.
 //  - Static assets (icons, _next static): cache-first.
 //  - API calls (the backend): never cached here (always go to network).
-const CACHE = 'pantrypilot-v2';
+const CACHE = 'pantryiq-v1';
 const SHELL = ['/', '/manifest.webmanifest', '/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {

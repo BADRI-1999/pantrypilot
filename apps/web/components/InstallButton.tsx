@@ -50,7 +50,7 @@ export default function InstallButton() {
       {showHelp && (
         <div className="install-modal" onClick={() => setShowHelp(false)}>
           <div className="install-modal-card" onClick={(e) => e.stopPropagation()}>
-            <h3>Install PantryPilot</h3>
+            <h3>Install PantryIQ</h3>
             {isIos() ? (
               <p>
                 In Safari, tap the <strong>Share</strong> button, then{' '}
@@ -59,7 +59,7 @@ export default function InstallButton() {
             ) : (
               <p>
                 In Chrome or Edge, open the browser menu (or the install icon in the
-                address bar) and choose <strong>“Install PantryPilot”</strong>.
+                address bar) and choose <strong>“Install PantryIQ”</strong>.
                 <br />
                 <br />
                 If you don’t see it yet, refresh the page once — the option appears

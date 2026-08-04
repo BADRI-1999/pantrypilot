@@ -1,4 +1,4 @@
-// PantryPilot data model (Postgres).
+// PantryIQ data model (Postgres).
 // Mirrors the PRD core entities: FoodEntity, Receipt, Inventory ledger,
 // Recipe, MealLog, ShoppingList. pgvector resolution is deferred; we use
 // normalized-string + LLM resolution for now.
